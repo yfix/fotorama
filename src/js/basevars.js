@@ -38,6 +38,8 @@ var $WINDOW = $(window),
 
     MAX_WIDTH = 99999,
 
+    FIFTYFIFTY = '50%',
+
     OPTIONS = {
       // dimensions
       width: null, // 500 || '100%'
@@ -53,6 +55,9 @@ var $WINDOW = $(window),
       glimpse: 0,
 
       fit: 'contain', // 'cover' || 'scaledown' || 'none'
+
+      position: FIFTYFIFTY,
+      thumbposition: FIFTYFIFTY,
 
       // navigation, thumbs
       nav: 'dots', // 'thumbs' || false
@@ -86,6 +91,8 @@ var $WINDOW = $(window),
       click: true,
       swipe: true,
       trackpad: false,
+
+      enableifsingleframe: false,
 
       controlsonstart: true,
 

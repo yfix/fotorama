@@ -4,6 +4,7 @@ grunt.initConfig({
 pkg: grunt.file.readJSON('package.json'),
 meta: {
   banner: '/*!\n * <%= pkg.name %> <%= pkg.version %> | http://fotorama.io/license/\n */\n',
+  bannerJs: '<%= meta.banner %>fotoramaVersion = \'<%= pkg.version %>\';\n',
   sass: ['src/scss/*'],
   js: [
     'src/js/intro.js',
@@ -133,6 +134,26 @@ copy: {
       }
     ]
   },
+  npm: {
+    files: [
+      {
+        src: 'out/fotorama.css',
+        dest: '.fotorama-npm/dist/fotorama.css'
+      },
+        {
+        src: 'out/fotorama.png',
+        dest: '.fotorama-npm/dist/fotorama.png'
+      },
+      {
+        src: 'out/fotorama@2x.png',
+        dest: '.fotorama-npm/dist/fotorama@2x.png'
+      },
+      {
+        src: 'out/fotorama.js',
+        dest: '.fotorama-npm/dist/fotorama.js'
+      }
+    ]
+  },
   cdnjs: {
     path: '/Users/artpolikarpov/Projects/Clone/cdnjs/ajax/libs/fotorama',
     files: [
@@ -165,7 +186,7 @@ concat: {
       'out/fotorama.js': '<%= meta.js %>'
     },
     options: {
-      banner: '<%= meta.banner %>'
+      banner: '<%= meta.bannerJs %>'
     }
   },
   css: {
@@ -223,7 +244,8 @@ replace: {
   version: {
     files: {
       'fotorama.jquery.json': 'fotorama.jquery.json',
-      '.fotorama-bower/bower.json': '.fotorama-bower/bower.json'
+      '.fotorama-bower/bower.json': '.fotorama-bower/bower.json',
+      '.fotorama-npm/package.json': '.fotorama-npm/package.json'
     },
     options: {
       patterns: [
@@ -390,6 +412,10 @@ shell: {
         '&& git tag <%= pkg.version %> ' +
         '&& git push --tags --progress origin master:master'
   },
+  npm: {
+    command: 'cd .fotorama-npm ' +
+        '&& npm publish'
+  },
   heroku: {
     command: 'heroku config:add FOTORAMA_VERSION=<%= pkg.version %> FOTORAMA_NEXT=<%= pkg.version %>'
   }
@@ -408,7 +434,7 @@ tweet: {
     options: {
       crop: true
     },
-    text: 'Fotorama <%= pkg.version %>',
+    text: 'Fotorama <%= pkg.version %>, “<%= grunt.file.readJSON("history.json")[pkg.version + ":name"] %>”',
     url: 'https://github.com/artpolikarpov/fotorama/releases/tag/<%= pkg.version %>'
   }
 },
@@ -471,5 +497,6 @@ grunt.registerTask('default', defaultTask.split(' '));
 grunt.registerTask('cdnjs', (defaultTask + ' s3 replace:version copy:cdnjs shell:cdnjs').split(' '));
 
 // Publish, will fail without secret details ;-)
-grunt.registerTask('publish', (defaultTask + ' s3 replace:version copy:bower shell:commit shell:push shell:bower shell:heroku replace:history gh_release tweet').split(' '));
+grunt.registerTask('publish', (defaultTask + ' s3 replace:version copy:bower shell:commit shell:push shell:bower shell:npm shell:heroku').split(' '));
+grunt.registerTask('release', ('replace:history gh_release tweet').split(' '));
 };

@@ -30,25 +30,29 @@ function getDuration (time) {
   return {'transition-duration': time + 'ms'};
 }
 
+function unlessNaN (value, alternative) {
+  return isNaN(value) ? alternative : value;
+}
+
 function numberFromMeasure (value, measure) {
-  return +String(value).replace(measure || 'px', '') || undefined;
+  return unlessNaN(+String(value).replace(measure || 'px', ''));
 }
 
 function numberFromPercent (value) {
-  return /%$/.test(value) && numberFromMeasure(value, '%');
+  return /%$/.test(value) ? numberFromMeasure(value, '%') : undefined;
 }
 
 function numberFromWhatever (value, whole) {
-  return numberFromPercent(value) / 100 * whole || numberFromMeasure(value);
+  return unlessNaN(numberFromPercent(value) / 100 * whole, numberFromMeasure(value));
 }
 
 function measureIsValid (value) {
-  return (!!numberFromMeasure(value) || !!numberFromMeasure(value, '%')) && value;
+  return (!isNaN(numberFromMeasure(value)) || !isNaN(numberFromMeasure(value, '%'))) && value;
 }
 
 function getPosByIndex (index, side, margin, baseIndex) {
-  console.log('getPosByIndex', index, side, margin, baseIndex);
-  console.log((index - (baseIndex || 0)) * (side + (margin || 0)));
+  //console.log('getPosByIndex', index, side, margin, baseIndex);
+  //console.log((index - (baseIndex || 0)) * (side + (margin || 0)));
 
   return (index - (baseIndex || 0)) * (side + (margin || 0));
 }
@@ -286,28 +290,45 @@ function isDetached (el) {
   return !$.contains(document.documentElement, el);
 }
 
-function waitFor (test, fn, timeout) {
+function waitFor (test, fn, timeout, i) {
+  if (!waitFor.i) {
+    waitFor.i = 1;
+    waitFor.ii = [true];
+  }
+
+  i = i || waitFor.i;
+
+  if (typeof waitFor.ii[i] === 'undefined') {
+    waitFor.ii[i] = true;
+  }
+
   if (test()) {
     fn();
   } else {
-    setTimeout(function () {
-      waitFor(test, fn);
+    waitFor.ii[i] && setTimeout(function () {
+      waitFor.ii[i] && waitFor(test, fn, timeout, i);
     }, timeout || 100);
   }
+
+  return waitFor.i++;
 }
 
+waitFor.stop = function (i) {
+  waitFor.ii[i] = false;
+};
+
 function setHash (hash) {
-  console.time('setHash ' + hash);
+  ////console.time('setHash ' + hash);
   location.replace(location.protocol
       + '//'
       + location.host
       + location.pathname.replace(/^\/?/, '/')
       + location.search
       + '#' + hash);
-  console.timeEnd('setHash ' + hash);
+  ////console.timeEnd('setHash ' + hash);
 }
 
-function fit ($el, measuresToFit, method) {
+function fit ($el, measuresToFit, method, position) {
   var elData = $el.data(),
       measures = elData.measures;
 
@@ -317,14 +338,19 @@ function fit ($el, measuresToFit, method) {
       elData.l.r !== measures.ratio ||
       elData.l.w !== measuresToFit.w ||
       elData.l.h !== measuresToFit.h ||
-      elData.l.m !== method)) {
+      elData.l.m !== method ||
+      elData.l.p !== position)) {
+
+    console.log('fit');
+
     var width = measures.width,
         height = measures.height,
         ratio = measuresToFit.w / measuresToFit.h,
         biggerRatioFLAG = measures.ratio >= ratio,
         fitFLAG = method === 'scaledown',
         containFLAG = method === 'contain',
-        coverFLAG = method === 'cover';
+        coverFLAG = method === 'cover',
+        pos = parsePosition(position);
 
     if (biggerRatioFLAG && (fitFLAG || containFLAG) || !biggerRatioFLAG && coverFLAG) {
       width = minMaxLimit(measuresToFit.w, 0, fitFLAG ? width : Infinity);
@@ -337,8 +363,8 @@ function fit ($el, measuresToFit, method) {
     $el.css({
       width: Math.ceil(width),
       height: Math.ceil(height),
-      left: Math.floor(measuresToFit.w / 2 - width / 2),
-      top: Math.floor(measuresToFit.h / 2 - height / 2)
+      left: Math.floor(numberFromWhatever(pos.x, measuresToFit.w - width)),
+      top: Math.floor(numberFromWhatever(pos.y, measuresToFit.h- height))
     });
 
     elData.l = {
@@ -347,7 +373,8 @@ function fit ($el, measuresToFit, method) {
       r: measures.ratio,
       w: measuresToFit.w,
       h: measuresToFit.h,
-      m: method
+      m: method,
+      p: position
     };
   }
 
@@ -405,7 +432,7 @@ function smartClick ($el, fn, _options) {
       onMove: _options.onMove || noop,
       onTouchEnd: _options.onTouchEnd || noop,
       onEnd: function (result) {
-        console.log('smartClick → result.moved', result.moved);
+        //console.log('smartClick → result.moved', result.moved);
         if (result.moved) return;
         fn.call(this, startEvent);
       }
@@ -497,9 +524,17 @@ function addFocus (el, fn) {
 
 function stopEvent (e, stopPropagation) {
   e.preventDefault ? e.preventDefault() : (e.returnValue = false);
-  stopPropagation && e.stopPropagation();
+  stopPropagation && e.stopPropagation && e.stopPropagation();
 }
 
 function getDirectionSign (forward) {
   return forward ? '>' : '<';
+}
+
+function parsePosition (rule) {
+  rule = (rule + '').split(/\s+/);
+  return {
+    x: measureIsValid(rule[0]) || FIFTYFIFTY,
+    y: measureIsValid(rule[1]) || FIFTYFIFTY
+  }
 }
